@@ -3,6 +3,11 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  
+  #Practice trigger — only fires on main, runs indefinitely until removed. 
+  #Remove this block once you're done observing it. 
+  schedule:  
+     - cron: '*/15 * * * *'
 
 jobs:
   test:
