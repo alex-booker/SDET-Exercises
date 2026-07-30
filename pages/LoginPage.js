@@ -1,13 +1,20 @@
 // pages/LoginPage.js
 // Page Object: encapsula todos los selectores y acciones de la página de login.
 // Si SauceDemo cambia un selector, solo se edita aquí.
+//
+// Capa "chained page objects": login() retorna la InventoryPage a la que la
+// app navega, para poder escribir `const inventoryPage = await loginPage.login(...)`
+// en lugar de instanciar InventoryPage a mano en cada test.
 
-class LoginPage {
+const { BasePage } = require('./BasePage');
+const { InventoryPage } = require('./InventoryPage');
+
+class LoginPage extends BasePage {
   /**
    * @param {import('@playwright/test').Page} page
    */
   constructor(page) {
-    this.page = page;
+    super(page);
 
     // ── Locators ────────────────────────────────────────────────────
     // Playwright auto-espera a que estos elementos sean visibles/habilitados
@@ -20,7 +27,8 @@ class LoginPage {
 
   /** Navega a la página de login */
   async goto() {
-    await this.page.goto('/');
+    await super.goto('/');
+    return this;
   }
 
   /**
@@ -32,6 +40,10 @@ class LoginPage {
     await this.usernameInput.fill(username);
     await this.passwordInput.fill(password);
     await this.loginButton.click();
+    // Si el login falla (usuario inválido/bloqueado) la app se queda en esta
+    // misma pantalla; el test seguirá usando `loginPage.errorMessage`
+    // directamente en vez del objeto retornado aquí.
+    return new InventoryPage(this.page);
   }
 
   /** Devuelve el texto del mensaje de error (si existe) */
@@ -40,4 +52,4 @@ class LoginPage {
   }
 }
 
-module.exports = { LoginPage };  // 
+module.exports = { LoginPage };

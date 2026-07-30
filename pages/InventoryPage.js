@@ -1,51 +1,42 @@
 // pages/InventoryPage.js
 // Page Object: catálogo de productos tras hacer login.
+//
+// `product(name)` reemplaza a los antiguos getAddToCartButton()/getRemoveButton():
+// devuelve un ProductItemComponent (component object) en vez de un locator suelto.
+// `goToCart()` encadena hacia CartPage.
 
-class InventoryPage {
+const { BasePage } = require('./BasePage');
+const { CartPage } = require('./CartPage');
+const { ProductItemComponent } = require('../components/ProductItemComponent');
+
+class InventoryPage extends BasePage {
   /**
    * @param {import('@playwright/test').Page} page
    */
   constructor(page) {
-    this.page = page;
+    super(page);
 
     // ── Locators ────────────────────────────────────────────────────
-    this.pageTitle       = page.locator('.title');
     this.cartBadge       = page.locator('.shopping_cart_badge');
     this.cartIcon        = page.locator('.shopping_cart_link');
     this.inventoryItems  = page.locator('.inventory_item');
   }
 
   /**
-   * Devuelve el botón "Add to cart" de un producto por su nombre exacto.
-   * Playwright sube desde el texto del nombre hasta el contenedor del item
-   * y busca el botón dentro de ese contenedor.
-   *
+   * Devuelve el componente de un producto del catálogo por su nombre exacto.
    * @param {string} productName  Ej: 'Sauce Labs Backpack'
    */
-  getAddToCartButton(productName) {
-    return this.page
-      .locator('.inventory_item')
-      .filter({ hasText: productName })
-      .locator('button');
-  }
-
-  /**
-   * Devuelve el botón "Remove" de un producto por su nombre.
-   * @param {string} productName
-   */
-  getRemoveButton(productName) {
-    return this.page
-      .locator('.inventory_item')
-      .filter({ hasText: productName })
-      .locator('button');
+  product(productName) {
+    return new ProductItemComponent(this.page, '.inventory_item', productName);
   }
 
   /** Navega al carrito */
   async goToCart() {
     await this.cartIcon.click();
+    return new CartPage(this.page);
   }
 
-  /** Devuelve el número en el badge del carrito (null si está vacío) */
+  /** Devuelve el número en el badge del carrito (0 si está vacío) */
   async getCartCount() {
     const visible = await this.cartBadge.isVisible();
     if (!visible) return 0;

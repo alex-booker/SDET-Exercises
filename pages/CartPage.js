@@ -1,15 +1,21 @@
 // pages/CartPage.js
-// Page Object: página del carrito de compras.
+// Page Object: carrito de compras y flujo de checkout.
+//
+// `product(name)` reemplaza a getRemoveButton() con el mismo ProductItemComponent
+// que usa InventoryPage. Las acciones de checkout retornan `this` porque
+// siguen operando sobre la misma familia de pantallas (checkout-step-*).
 
-class CartPage {
+const { BasePage } = require('./BasePage');
+const { ProductItemComponent } = require('../components/ProductItemComponent');
+
+class CartPage extends BasePage {
   /**
    * @param {import('@playwright/test').Page} page
    */
   constructor(page) {
-    this.page = page;
+    super(page);
 
     // ── Locators ────────────────────────────────────────────────────
-    this.pageTitle       = page.locator('.title');
     this.cartItems       = page.locator('.cart_item');
     this.checkoutButton  = page.locator('[data-test="checkout"]');
     this.continueShoppingButton = page.locator('[data-test="continue-shopping"]');
@@ -29,14 +35,11 @@ class CartPage {
   }
 
   /**
-   * Devuelve el botón "Remove" de un item en el carrito por nombre.
+   * Devuelve el componente de un producto del carrito por su nombre.
    * @param {string} productName
    */
-  getRemoveButton(productName) {
-    return this.page
-      .locator('.cart_item')
-      .filter({ hasText: productName })
-      .locator('button');
+  product(productName) {
+    return new ProductItemComponent(this.page, '.cart_item', productName);
   }
 
   /** Devuelve los nombres de todos los productos en el carrito */
@@ -47,6 +50,7 @@ class CartPage {
   /** Inicia el proceso de checkout */
   async startCheckout() {
     await this.checkoutButton.click();
+    return this;
   }
 
   /**
@@ -60,13 +64,14 @@ class CartPage {
     await this.lastNameInput.fill(lastName);
     await this.postalCodeInput.fill(postalCode);
     await this.continueButton.click();
+    return this;
   }
 
   /** Confirma la orden en el paso 2 (overview) */
   async finishCheckout() {
     await this.finishButton.click();
+    return this;
   }
 }
 
-module.exports =  { CartPage };
-
+module.exports = { CartPage };
