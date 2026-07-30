@@ -1,4 +1,4 @@
-//import { test, expect } from '@playwright/test'; 
+//import { test, expect } from '@playwright/test';
 
 
 // ── Class ParenthesisValidator ──────────────────────────────────────
@@ -32,9 +32,7 @@ class ParenthesisValidator {
 
 const { test, expect }  = require('@playwright/test');
 const { LoginPage }     = require('../pages/LoginPage');
-const { InventoryPage } = require('../pages/InventoryPage');
-const { CartPage }      = require('../pages/CartPage');
-const validator         = new ParenthesisValidator(); 
+const validator         = new ParenthesisValidator();
 
 
 // ── Usuarios de prueba de Saucedo demo ────────────────────────────────────────
@@ -49,10 +47,12 @@ const CodePostal   = '20089';
 // ── Fixture: login reutilizable ────────────────────────────────────────────────
 // En lugar de repetir el login en cada test, usamos un helper.
 // Playwright auto-espera a que cada elemento esté listo antes de interactuar.
+// login() ya retorna la InventoryPage encadenada, así que el helper la propaga
+// en vez de descartarla.
 async function loginAs({ page, username = valid_user, password = Password }: { page: import('@playwright/test').Page; username?: string; password?: string; }) {
   const loginPage = new LoginPage(page);
   await loginPage.goto();
-  await loginPage.login(username, password);
+  return loginPage.login(username, password);
 }
 
 // ── Cleanup global (equivalente a finally para todos los tests) ───
@@ -64,37 +64,35 @@ test.afterEach(async ({ page }, testInfo) => {
 });
 
 
-// ── Tests de login en saucedemo - Admin User ───────────────────────────────────────────────────── 
+// ── Tests de login en saucedemo - Admin User ─────────────────────────────────────────────────────
 test('T01 - admin user can log in and sees dashboard', async ({ page }) => {
-  const loginPage     = new LoginPage(page);
-  const inventoryPage = new InventoryPage(page);
+  const loginPage = new LoginPage(page);
   await loginPage.goto();
   // Playwright auto-espera que los inputs sean visibles antes de fill()
-  await loginPage.login(admin_user, Password);
+  const inventoryPage = await loginPage.login(admin_user, Password);
 
   // Auto-espera a que la URL cambie y el título sea visible
   await expect(page).toHaveURL(/inventory/);
   await expect(inventoryPage.pageTitle).toHaveText('Products');
 
-}); 
+});
 
-  // ── Tests de login en saucedemo - regular User ───────────────────────────────────────────────────── 
-test('T02 - viewer user is redirected to read-only view', async ({ page }) => { 
+  // ── Tests de login en saucedemo - regular User ─────────────────────────────────────────────────────
+test('T02 - viewer user is redirected to read-only view', async ({ page }) => {
 
-  const loginPage     = new LoginPage(page);
-  const inventoryPage = new InventoryPage(page);
+  const loginPage = new LoginPage(page);
   await loginPage.goto();
   // Playwright auto-espera que los inputs sean visibles antes de fill()
-  await loginPage.login(valid_user, Password);
+  const inventoryPage = await loginPage.login(valid_user, Password);
 
   // Auto-espera a que la URL cambie y el título sea visible
   await expect(page).toHaveURL(/inventory/);
   await expect(inventoryPage.pageTitle).toHaveText('Products');
-}); 
+});
 
 
-  // ── Tests de login en saucedemo - Invalid User ───────────────────────────────────────────────────── 
-test('T03 -User is invalid, not able to log in', async ({ page }) => { 
+  // ── Tests de login en saucedemo - Invalid User ─────────────────────────────────────────────────────
+test('T03 -User is invalid, not able to log in', async ({ page }) => {
 
   const loginPage = new LoginPage(page);
   await loginPage.goto();
@@ -110,13 +108,10 @@ test('T03 -User is invalid, not able to log in', async ({ page }) => {
 });
 
 
-  // ── Tests de login en saucedemo - elegir un producto ───────────────────────────────────────────────────── 
-test('T04 - User is able to select a product', async ({ page }) => { 
+  // ── Tests de login en saucedemo - elegir un producto ─────────────────────────────────────────────────────
+test('T04 - User is able to select a product', async ({ page }) => {
 
-   await loginAs({ page });
-
-  const inventoryPage = new InventoryPage(page);
-  const cartPage      = new CartPage(page);
+  const inventoryPage = await loginAs({ page });
   const PRODUCT = 'Sauce Labs Backpack';
 
   // Auto-espera a que la URL cambie y el título sea visible
@@ -168,20 +163,20 @@ test('T04 - User is able to select a product', async ({ page }) => {
     - text: /This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests\\. Super-soft and comfy ringspun combed cotton\\. \\$\\d+\\.\\d+/
     - button "Add to cart"
     `);
-  // Agregar
-  await inventoryPage.getAddToCartButton(PRODUCT).click();
+  // Agregar (component object: mismo botón que "remove", encapsulado una sola vez)
+  await inventoryPage.product(PRODUCT).addToCart();
   await expect(inventoryPage.cartBadge).toHaveText('1');
 
-  // Ir al carrito
-  await inventoryPage.goToCart();
+  // Ir al carrito (encadenado: goToCart() retorna la CartPage)
+  const cartPage = await inventoryPage.goToCart();
   await expect(cartPage.pageTitle).toHaveText('Your Cart');
 
   // Verificar que el producto está en el carrito
   const items = await cartPage.getItemNames();
   expect(items).toContain(PRODUCT);
 
-  // Remover desde el carrito
-  await cartPage.getRemoveButton(PRODUCT).click();
+  // Remover desde el carrito (mismo ProductItemComponent, distinto contenedor)
+  await cartPage.product(PRODUCT).remove();
 
   // Auto-espera a que el item desaparezca del DOM
   await expect(page.locator('.cart_item')).toHaveCount(0);
@@ -192,24 +187,21 @@ test('T04 - User is able to select a product', async ({ page }) => {
   await page.locator('[data-test="checkout"]').click();
 
 
-}); 
+});
 
 
-  // ── Tests de login en saucedemo - borrar un producto ───────────────────────────────────────────────────── 
-test('User is able to delete a product', async ({ page }) => { 
+  // ── Tests de login en saucedemo - borrar un producto ─────────────────────────────────────────────────────
+test('User is able to delete a product', async ({ page }) => {
 
- await loginAs({ page });
-
-  const inventoryPage = new InventoryPage(page);
-  const cartPage      = new CartPage(page);
+  const inventoryPage = await loginAs({ page });
   const PRODUCT = 'Sauce Labs Bike Light';
 
   // Agregar
-  await inventoryPage.getAddToCartButton(PRODUCT).click();
+  await inventoryPage.product(PRODUCT).addToCart();
   await expect(inventoryPage.cartBadge).toHaveText('1');
 
   // Ir al carrito
-  await inventoryPage.goToCart();
+  const cartPage = await inventoryPage.goToCart();
   await expect(cartPage.pageTitle).toHaveText('Your Cart');
 
   // Verificar que el producto está en el carrito
@@ -217,31 +209,28 @@ test('User is able to delete a product', async ({ page }) => {
   expect(items).toContain(PRODUCT);
 
   // Remover desde el carrito
-  await cartPage.getRemoveButton(PRODUCT).click();
+  await cartPage.product(PRODUCT).remove();
 
   // Auto-espera a que el item desaparezca del DOM
   await expect(page.locator('.cart_item')).toHaveCount(0);
 
   // El badge del carrito ya no debe ser visible
   await expect(inventoryPage.cartBadge).not.toBeVisible();
-}); 
+});
 
 
 // -- elegir un producto y dar checkout ─────────────────────────────────────────────────────
 test('User is able to select a product and checkout', async ({ page }) => {
-  
- await loginAs({ page });
-  
-  const inventoryPage = new InventoryPage(page);
-  const cartPage      = new CartPage(page);
+
+  const inventoryPage = await loginAs({ page });
   const PRODUCT = 'Sauce Labs Fleece Jacket';
 
   // 1. Agregar producto
-  await inventoryPage.getAddToCartButton(PRODUCT).click();
+  await inventoryPage.product(PRODUCT).addToCart();
   await expect(inventoryPage.cartBadge).toHaveText('1');
 
   // 2. Ir al carrito
-  await inventoryPage.goToCart();
+  const cartPage = await inventoryPage.goToCart();
   await expect(cartPage.pageTitle).toHaveText('Your Cart');
 
   // 3. Iniciar checkout
@@ -259,7 +248,7 @@ test('User is able to select a product and checkout', async ({ page }) => {
   // 6. Verificar pantalla de confirmación
   await expect(page).toHaveURL(/checkout-complete/);
   await expect(cartPage.confirmationHeader).toHaveText('Thank you for your order!');
-});  
+});
 
 
 
