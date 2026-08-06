@@ -1,2 +1,6 @@
 node_modules/
 test-results/
+
+# Specs generados por playwright-bdd a partir de features/*.feature.
+# No se versionan: se regeneran en cada `npm run test:bdd` (ver playwright.config.js).
+.features-gen/
