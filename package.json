@@ -6,13 +6,16 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:bdd": "bddgen && playwright test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@cucumber/cucumber": "^13.2.0",
     "@playwright/test": "^1.44.0",
-    "@types/node": "^26.0.1"
+    "@types/node": "^26.0.1",
+    "playwright-bdd": "^9.2.0"
   }
 }
