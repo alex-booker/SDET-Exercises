@@ -42,3 +42,69 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  # Mobile Automation, Topico 5: corre la suite de Appium en un emulador
+  # Android real dentro del runner (via reactivecircus/android-emulator-runner,
+  # que trae su propio ANDROID_HOME/adb con soporte de virtualizacion
+  # anidada) y sube el screenshot + page source + logcat + video generados
+  # por mobile/run-suite.js, sin importar si la suite paso o fallo.
+  mobile-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Appium and the UiAutomator2 driver
+        run: |
+          npm install -g appium
+          appium driver install uiautomator2
+
+      # reactivecircus/android-emulator-runner necesita acceso a KVM
+      # (virtualizacion anidada) para arrancar el emulador a una velocidad
+      # razonable en los runners hospedados por GitHub — sin este paso, el
+      # emulador cae a emulacion por software (muy lento) o directamente
+      # falla al arrancar.
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Boot emulator and run the mobile suite
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          script: |
+            appium --address 127.0.0.1 --port 4723 --allow-insecure uiautomator2:chromedriver_autodownload &
+            sleep 15
+            npm run mobile:run-suite
+
+      # if: always() (no if: failure()) a proposito: queremos el video de la
+      # corrida completa disponible aunque todo pase, no solo cuando algo
+      # falla — mismo criterio que el "Upload HTML test report" de arriba.
+      - name: Upload mobile diagnostics (screenshot + page source + logcat + video)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-diagnostics
+          path: mobile/artifacts/
+          retention-days: 14

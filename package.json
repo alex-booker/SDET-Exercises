@@ -7,7 +7,14 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:report": "playwright show-report",
-    "test:bdd": "bddgen && playwright test"
+    "test:bdd": "bddgen && playwright test",
+    "mobile:launch": "node mobile/launch-sample-app.js",
+    "mobile:find-package": "node mobile/find-package-name.js",
+    "mobile:alarm-flat": "node mobile/tests/alarm-flat.js",
+    "mobile:alarm-screen-object": "node mobile/tests/alarm-screen-object.js",
+    "mobile:settings-scroll-demo": "node mobile/tests/settings-scroll-demo.js",
+    "mobile:run-suite": "node mobile/run-suite.js",
+    "mobile:final-exercise": "node mobile/final-exercise.js"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +23,7 @@
     "@cucumber/cucumber": "^13.2.0",
     "@playwright/test": "^1.44.0",
     "@types/node": "^26.0.1",
-    "playwright-bdd": "^9.2.0"
+    "playwright-bdd": "^9.2.0",
+    "webdriverio": "^9.30.1"
   }
 }
