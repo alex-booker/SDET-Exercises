@@ -4,6 +4,8 @@
 // `product(name)` reemplaza a getRemoveButton() con el mismo ProductItemComponent
 // que usa InventoryPage. Las acciones de checkout retornan `this` porque
 // siguen operando sobre la misma familia de pantallas (checkout-step-*).
+// `continueShopping()` sí es una navegación real hacia otra pantalla, así que
+// retorna la InventoryPage encadenada (mismo patrón que `login()`/`goToCart()`).
 
 const { BasePage } = require('./BasePage');
 const { ProductItemComponent } = require('../components/ProductItemComponent');
@@ -71,6 +73,20 @@ class CartPage extends BasePage {
   async finishCheckout() {
     await this.finishButton.click();
     return this;
+  }
+
+  /**
+   * Navega de vuelta al catálogo de productos.
+   * `require` diferido (dentro del método, no en el top del archivo) para
+   * evitar un require circular con InventoryPage, que ya importa CartPage
+   * a nivel de módulo — para cuando este método se invoca en runtime ambos
+   * módulos ya terminaron de cargar, así que el require solo devuelve la
+   * versión cacheada.
+   */
+  async continueShopping() {
+    await this.continueShoppingButton.click();
+    const { InventoryPage } = require('./InventoryPage');
+    return new InventoryPage(this.page);
   }
 }
 
